@@ -62,7 +62,7 @@ func InstallServer(manifestDir string, manifest *Manifest, outputDir string) err
 				"oculus", "rubidium", "embeddium",
 				"controlling", "searchables",
 				"toastcontrol", "mouseedits",
-				"catalogue", "configured",
+				"catalogue", "configured", "MouseTweaks", "xaero", "YungsMenuTweaks",
 			}
 
 			for _, blocked := range blocklist {
