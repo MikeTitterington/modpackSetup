@@ -55,12 +55,8 @@ func IsClientSideOnly(jarPath string) (bool, string, error) {
 			}
 
 			content := string(data)
-			// Heuristic: Check for displayTest="IGNORE_ALL_VERSION" which often indicates client-side cosmetic mods
-			// Use regex to be more flexible with whitespace
-			matched, _ := regexp.MatchString(`displayTest\s*=\s*"IGNORE_ALL_VERSION"`, content)
-			if matched {
-				return true, "", nil
-			}
+			// Heuristic: displayTest="IGNORE_ALL_VERSION" is too aggressive and deletes server mods like AttributeFix.
+			// Removing this check. Rely on Blocklist for client-side filtering.
 
 			// Extract Mod ID
 			// modId="name" or modId = "name"
