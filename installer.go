@@ -43,12 +43,33 @@ func InstallServer(manifestDir string, manifest *Manifest, outputDir string) err
 		// For this MVP, let's stick to simple names or trust the server to load them.
 
 		// Check Client Side
-		isClient, err := IsClientSideOnly(destPath)
+		isClient, modId, err := IsClientSideOnly(destPath)
 		if err != nil {
 			fmt.Printf("Warning: Failed to check if mod is client side: %v\n", err)
-		} else if isClient {
-			fmt.Printf("Removing client-side mod: %s\n", filename)
-			os.Remove(destPath)
+		} else {
+			// Check Blocklist (internal mod ID)
+			blocklist := []string{
+				"essential", "essential-mod", "essentials",
+				"essential_mod", "essentialclient",
+				// seemingly client-side only mods that might be missed
+				"oculus", "rubidium", "embeddium",
+				"controlling", "searchables",
+				"toastcontrol", "mouseedits",
+				"catalogue", "configured",
+			}
+
+			for _, blocked := range blocklist {
+				if strings.Contains(strings.ToLower(modId), blocked) {
+					isClient = true // Force client side
+					fmt.Printf("Mod '%s' (ID: %s) matched blocklist '%s'\n", filename, modId, blocked)
+					break
+				}
+			}
+
+			if isClient {
+				fmt.Printf("Removing client-side mod: %s (ModID: %s)\n", filename, modId)
+				os.Remove(destPath)
+			}
 		}
 	}
 

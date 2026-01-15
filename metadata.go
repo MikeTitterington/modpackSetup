@@ -11,10 +11,10 @@ type FabricMod struct {
 	Environment string `json:"environment"`
 }
 
-func IsClientSideOnly(jarPath string) (bool, error) {
+func IsClientSideOnly(jarPath string) (bool, string, error) {
 	r, err := zip.OpenReader(jarPath)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	defer r.Close()
 
@@ -23,19 +23,19 @@ func IsClientSideOnly(jarPath string) (bool, error) {
 		if f.Name == "fabric.mod.json" {
 			rc, err := f.Open()
 			if err != nil {
-				return false, err
+				return false, "", err
 			}
 
 			data, err := io.ReadAll(rc)
 			rc.Close()
 			if err != nil {
-				return false, err
+				return false, "", err
 			}
 
 			var mod FabricMod
 			if err := json.Unmarshal(data, &mod); err == nil {
 				if mod.Environment == "client" {
-					return true, nil
+					return true, "", nil
 				}
 			}
 		}
@@ -46,12 +46,12 @@ func IsClientSideOnly(jarPath string) (bool, error) {
 		if f.Name == "META-INF/mods.toml" {
 			rc, err := f.Open()
 			if err != nil {
-				return false, err
+				return false, "", err
 			}
 			data, err := io.ReadAll(rc)
 			rc.Close()
 			if err != nil {
-				return false, err
+				return false, "", err
 			}
 
 			content := string(data)
@@ -59,10 +59,21 @@ func IsClientSideOnly(jarPath string) (bool, error) {
 			// Use regex to be more flexible with whitespace
 			matched, _ := regexp.MatchString(`displayTest\s*=\s*"IGNORE_ALL_VERSION"`, content)
 			if matched {
-				return true, nil
+				return true, "", nil
 			}
+
+			// Extract Mod ID
+			// modId="name" or modId = "name"
+			re := regexp.MustCompile(`modId\s*=\s*"([^"]+)"`)
+			matches := re.FindStringSubmatch(content)
+			var modId string
+			if len(matches) > 1 {
+				modId = matches[1]
+			}
+
+			return false, modId, nil
 		}
 	}
 
-	return false, nil
+	return false, "", nil
 }
