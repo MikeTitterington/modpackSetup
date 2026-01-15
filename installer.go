@@ -17,30 +17,27 @@ func InstallServer(manifestDir string, manifest *Manifest, outputDir string) err
 
 	for i, file := range manifest.Files {
 		url := GetModDownloadURL(file.ProjectID, file.FileID)
-		filename := fmt.Sprintf("%d-%d.jar", file.ProjectID, file.FileID) // Temporary name
-		destPath := filepath.Join(modsDir, filename)
-
 		fmt.Printf("[%d/%d] Downloading Mod ID: %d File ID: %d...\n", i+1, len(manifest.Files), file.ProjectID, file.FileID)
 
-		// Download
-		err := DownloadFile(url, destPath)
+		// Download Mod
+		destPath, err := DownloadMod(url, modsDir)
 		if err != nil {
-			fmt.Printf("Failed to download mod %d: %v\n", file.ProjectID, err)
+			fmt.Printf("Failed to download mod %d (File %d): %v\n", file.ProjectID, file.FileID, err)
 			if file.Required {
-				return err
+				return err // Only return error if mod is required
 			}
+			// Optional mod? For now, we assume all are required or we just skip
 			continue
 		}
+
+		filename := filepath.Base(destPath)
+		fmt.Printf("Downloaded: %s\n", filename)
 
 		// Rename to real filename if possible?
 		// The generic download URL redirects to the real filename.
 		// Our DownloadFile implementation saves to the destPath provided.
 		// So we have "ProjectID-FileID.jar".
 		// We can't easily get the real filename without inspecting the HTTP response headers in DownloadFile.
-		// For now, let's keep the ID name or try to inspect the content to rename it?
-		// Actually, standard server setups don't care about the filename, but it's nice to have.
-		// Let's improve DownloadFile later to return the filename?
-		// For this MVP, let's stick to simple names or trust the server to load them.
 
 		// Check Client Side
 		isClient, modId, err := IsClientSideOnly(destPath)
@@ -59,7 +56,7 @@ func InstallServer(manifestDir string, manifest *Manifest, outputDir string) err
 			}
 
 			for _, blocked := range blocklist {
-				if strings.Contains(strings.ToLower(modId), blocked) {
+				if strings.Contains(strings.ToLower(modId), blocked) || strings.Contains(strings.ToLower(filename), blocked) {
 					isClient = true // Force client side
 					fmt.Printf("Mod '%s' (ID: %s) matched blocklist '%s'\n", filename, modId, blocked)
 					break

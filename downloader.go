@@ -87,3 +87,49 @@ func Unzip(src string, dest string) error {
 func GetModDownloadURL(projectID, fileID int) string {
 	return fmt.Sprintf("https://www.curseforge.com/api/v1/mods/%d/files/%d/download", projectID, fileID)
 }
+
+func DownloadMod(url string, outputDir string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	// Determine filename
+	filename := filepath.Base(resp.Request.URL.Path)
+
+	// Sometimes the path might be empty or "/" if something goes wrong, though unlikely with file downloads
+	if filename == "" || filename == "." {
+		return "", fmt.Errorf("could not determine filename from URL: %s", resp.Request.URL.String())
+	}
+
+	// Sanitize filename (basic)
+	filename = strings.ReplaceAll(filename, "/", "_")
+	filename = strings.ReplaceAll(filename, "\\", "_")
+
+	// Ensure .jar extension if missing (some redirects might be weird, but usually CurseForge is good)
+	if !strings.HasSuffix(filename, ".jar") {
+		// Try to parse Content-Disposition if needed, but for now append .jar if it looks like a fileID?
+		// Actually, let's just stick to the URL base.
+		// Most usage: edge.forgecdn.net/files/.../Name.jar
+	}
+
+	destPath := filepath.Join(outputDir, filename)
+
+	out, err := os.Create(destPath)
+	if err != nil {
+		return "", err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return destPath, nil
+}
