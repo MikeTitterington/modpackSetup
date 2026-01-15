@@ -3,11 +3,21 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
 func InstallServer(manifestDir string, manifest *Manifest, outputDir string) error {
+	// FIX: Inject missing Pehkui dependency (ProjectID: 319596, FileID: 5393101)
+	// The modpack requires 'pehkui' but does not list it in the manifest.
+	fmt.Println("Applying Patch: Injecting missing Pehkui dependency...")
+	manifest.Files = append(manifest.Files, File{
+		ProjectID: 319596,
+		FileID:    5393101,
+		Required:  true,
+	})
+
 	modsDir := filepath.Join(outputDir, "mods")
 	if err := os.MkdirAll(modsDir, os.ModePerm); err != nil {
 		return err
@@ -93,12 +103,32 @@ func InstallServer(manifestDir string, manifest *Manifest, outputDir string) err
 			if err := DownloadFile(installerUrl, installerPath); err != nil {
 				fmt.Printf("Failed to download forge installer: %v\n", err)
 			} else {
-				fmt.Println("Forge Installer downloaded. Run: java -jar forge-installer.jar --installServer")
-				// Create a helper script
+				fmt.Println("Forge Installer downloaded. Running installer... (This may take a while)")
+
+				// Run Installer
+				cmd := exec.Command("java", "-jar", "forge-installer.jar", "--installServer")
+				cmd.Dir = outputDir
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				if err := cmd.Run(); err != nil {
+					fmt.Printf("Error running Forge installer: %v\n", err)
+					fmt.Println("Please run 'java -jar forge-installer.jar --installServer' manually.")
+				} else {
+					fmt.Println("Forge installation complete.")
+				}
+
+				// Create a helper script (optional now, but good to have)
 				scriptContent := "java -jar forge-installer.jar --installServer\n"
 				os.WriteFile(filepath.Join(outputDir, "install_forge.sh"), []byte(scriptContent), 0755)
 			}
 		}
+	}
+
+	// Accept EULA
+	eulaPath := filepath.Join(outputDir, "eula.txt")
+	fmt.Println("Accepting EULA...")
+	if err := os.WriteFile(eulaPath, []byte("eula=true\n"), 0644); err != nil {
+		fmt.Printf("Error writing eula.txt: %v\n", err)
 	}
 
 	return nil
