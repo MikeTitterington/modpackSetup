@@ -61,12 +61,6 @@ func IsClientSideOnly(jarPath string) (bool, error) {
 			if matched {
 				return true, nil
 			}
-
-			// Heuristic: specific side="CLIENT"
-			matched, _ = regexp.MatchString(`side\s*=\s*"CLIENT"`, content)
-			if matched {
-				return true, nil
-			}
 		}
 	}
 
