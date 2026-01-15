@@ -4,7 +4,7 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"io"
-	"strings"
+	"regexp"
 )
 
 type FabricMod struct {
@@ -56,13 +56,15 @@ func IsClientSideOnly(jarPath string) (bool, error) {
 
 			content := string(data)
 			// Heuristic: Check for displayTest="IGNORE_ALL_VERSION" which often indicates client-side cosmetic mods
-			if strings.Contains(content, "displayTest=\"IGNORE_ALL_VERSION\"") {
+			// Use regex to be more flexible with whitespace
+			matched, _ := regexp.MatchString(`displayTest\s*=\s*"IGNORE_ALL_VERSION"`, content)
+			if matched {
 				return true, nil
 			}
 
 			// Heuristic: specific side="CLIENT"
-			// This is harder to match perfectly with string contains but "side=\"CLIENT\"" is a good guess
-			if strings.Contains(content, "side=\"CLIENT\"") {
+			matched, _ = regexp.MatchString(`side\s*=\s*"CLIENT"`, content)
+			if matched {
 				return true, nil
 			}
 		}
